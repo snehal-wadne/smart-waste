@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ecocollect_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: waste_management_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ecocollect_backend
+    restart: always
+    environment:
+      PORT: 8080
+      DATABASE_URL: "postgresql://postgres:postgrespassword@postgres:5432/waste_management_db?schema=public"
+      NODE_ENV: production
+      CORS_ORIGIN: "*"
+    ports:
+      - "5001:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ecocollect_frontend
+    restart: always
+    ports:
+      - "80:8080"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
